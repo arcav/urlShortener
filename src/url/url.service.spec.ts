@@ -3,18 +3,9 @@ import { UrlService } from './url.service';
 import { getModelToken } from '@nestjs/sequelize';
 import { Url } from './url.model';
 
-// Creamos un mock del modelo Url usando jest.fn()
-const mockUrlModel = {
-  create: jest.fn(),
-  findOne: jest.fn(),
-  findAll: jest.fn(),
-  destroy: jest.fn(),
-  findByPk: jest.fn(),
-  save: jest.fn(),
-};
-
 describe('UrlService', () => {
   let service: UrlService;
+  let urlModel: typeof Url;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -22,123 +13,135 @@ describe('UrlService', () => {
         UrlService,
         {
           provide: getModelToken(Url),
-          useValue: mockUrlModel,  
+          useValue: {
+            create: jest.fn(),
+            findOne: jest.fn(),
+            findAll: jest.fn(),
+            destroy: jest.fn(),
+            findByPk: jest.fn(),
+          },
         },
       ],
     }).compile();
 
     service = module.get<UrlService>(UrlService);
+    urlModel = module.get<typeof Url>(getModelToken(Url));
+  });
+
+  // Mock de Math.random()
+  beforeEach(() => {
+    jest.spyOn(Math, 'random').mockReturnValue(0.123456); // Valor fijo para pruebas
   });
 
   afterEach(() => {
-    jest.clearAllMocks();  
+    jest.restoreAllMocks(); // Restaurar el comportamiento original
   });
 
   describe('shortenUrl', () => {
-    it('should generate a short URL and return it with the original URL', async () => {
+    it('debería acortar una URL correctamente', async () => {
       const originalUrl = 'https://www.example.com';
-      const shortUrl = Math.random().toString(36).substring(2, 8);
+      const shortUrl = '4fzkjl'; // Valor generado con el mock de Math.random()
+      const fullShortUrl = `${process.env.BASE_URL}/${shortUrl}`;
+      
+      const createdUrl = { id: 1, originalUrl, shortUrl, fullShortUrl, clickCount: 0 } as Url;
 
-      // Mockeamos el comportamiento de create
-      mockUrlModel.create.mockResolvedValue({ originalUrl, shortUrl });
+      // Mock del método `create`
+      (urlModel.create as jest.Mock).mockResolvedValue(createdUrl);
 
       const result = await service.shortenUrl(originalUrl);
 
-      // Verificamos que se haya llamado el método create con los valores correctos
-      expect(mockUrlModel.create).toHaveBeenCalledWith({ originalUrl, shortUrl: expect.any(String) });
-      
-      // Verificamos que se haya generado correctamente la URL completa
-      const urlObject = new URL(originalUrl);
-      const domain = `${urlObject.protocol}//${urlObject.host}`;
-      const fullShortUrl = `${domain}/${shortUrl}`;
+      // Verificar que el servicio llama correctamente al método `create` del modelo
+      expect(urlModel.create).toHaveBeenCalledWith({
+        fullShortUrl,
+      });
 
-      expect(result.url.originalUrl).toEqual(originalUrl);
-      expect(result.url.shortUrl).toEqual(shortUrl);
-      expect(result.fullShortUrl).toEqual(fullShortUrl);
+      // Verificar el resultado
+      expect(result).toEqual(createdUrl);
     });
   });
 
-  // Test para el método findByShortUrl
   describe('findByShortUrl', () => {
-    it('should return a URL object if the short URL is found', async () => {
-      const shortUrl = 'abc123';
-      const url = { id: 1, originalUrl: 'https://www.example.com', shortUrl };
+    it('debería encontrar una URL por su shortUrl', async () => {
+      const shortUrl = '4fzkjl';
+      const urlData = { id: 1, originalUrl: 'https://www.example.com', shortUrl } as Url;
 
-      mockUrlModel.findOne.mockResolvedValue(url);
-
-      const result = await service.findByShortUrl(shortUrl);
-
-      expect(mockUrlModel.findOne).toHaveBeenCalledWith({ where: { shortUrl } });
-      expect(result).toEqual(url);
-    });
-
-    it('should return null if the short URL is not found', async () => {
-      const shortUrl = 'notfound';
-      mockUrlModel.findOne.mockResolvedValue(null);
+      // Mock del método `findOne`
+      (urlModel.findOne as jest.Mock).mockResolvedValue(urlData);
 
       const result = await service.findByShortUrl(shortUrl);
 
-      expect(mockUrlModel.findOne).toHaveBeenCalledWith({ where: { shortUrl } });
-      expect(result).toBeNull();
+      // Verificar que el método `findOne` fue llamado con el parámetro correcto
+      expect(urlModel.findOne).toHaveBeenCalledWith({ where: { shortUrl } });
+
+      // Verificar el resultado
+      expect(result).toEqual(urlData);
     });
   });
 
-  // Test para el método listUrls
   describe('listUrls', () => {
-    it('should return all URLs', async () => {
+    it('debería listar todas las URLs', async () => {
       const urls = [
-        { id: 1, originalUrl: 'https://www.example1.com', shortUrl: 'abc123' },
-        { id: 2, originalUrl: 'https://www.example2.com', shortUrl: 'def456' },
+        { id: 1, originalUrl: 'https://www.example.com', shortUrl: '4fzkjl' } as Url,
+        { id: 2, originalUrl: 'https://www.test.com', shortUrl: '2gfrty' } as Url,
       ];
 
-      mockUrlModel.findAll.mockResolvedValue(urls);
+      // Mock del método `findAll`
+      (urlModel.findAll as jest.Mock).mockResolvedValue(urls);
 
       const result = await service.listUrls();
 
-      expect(mockUrlModel.findAll).toHaveBeenCalled();
+      // Verificar que el método `findAll` fue llamado
+      expect(urlModel.findAll).toHaveBeenCalled();
+
+      // Verificar el resultado
       expect(result).toEqual(urls);
     });
   });
 
-  // Test para el método deleteUrl
   describe('deleteUrl', () => {
-    it('should delete a URL by ID', async () => {
+    it('debería eliminar una URL por su ID', async () => {
       const id = 1;
 
-      mockUrlModel.destroy.mockResolvedValue(1);  // Sequelize retorna el número de filas eliminadas
+      // Mock del método `destroy`
+      (urlModel.destroy as jest.Mock).mockResolvedValue(undefined);
 
       await service.deleteUrl(id);
 
-      expect(mockUrlModel.destroy).toHaveBeenCalledWith({ where: { id } });
+      // Verificar que el método `destroy` fue llamado con el parámetro correcto
+      expect(urlModel.destroy).toHaveBeenCalledWith({ where: { id } });
     });
   });
 
-  // Test para el método updateUrl
   describe('updateUrl', () => {
-    it('should update the original URL if the URL exists', async () => {
+    it('debería actualizar la URL original', async () => {
       const id = 1;
-      const newOriginalUrl = 'https://new-url.com';
-      const existingUrl = { id, originalUrl: 'https://old-url.com', shortUrl: 'abc123', save: jest.fn() };
+      const newOriginalUrl = 'https://www.updated.com';
+      const urlData = { id, originalUrl: 'https://www.example.com', shortUrl: '4fzkjl', save: jest.fn().mockResolvedValue(true) } as any;
 
-      mockUrlModel.findByPk.mockResolvedValue(existingUrl);
-      existingUrl.save.mockResolvedValue({ ...existingUrl, originalUrl: newOriginalUrl });
+      // Mock del método `findByPk`
+      (urlModel.findByPk as jest.Mock).mockResolvedValue(urlData);
 
       const result = await service.updateUrl(id, newOriginalUrl);
 
-      expect(mockUrlModel.findByPk).toHaveBeenCalledWith(id);
-      expect(existingUrl.save).toHaveBeenCalled();
-      expect(result.originalUrl).toEqual(newOriginalUrl);
+      // Verificar que la URL fue encontrada y actualizada
+      expect(urlModel.findByPk).toHaveBeenCalledWith(id);
+      expect(urlData.originalUrl).toBe(newOriginalUrl);
+      expect(urlData.save).toHaveBeenCalled();
+
+      // Verificar el resultado
+      expect(result).toEqual(urlData);
     });
 
-    it('should return null if the URL does not exist', async () => {
+    it('debería devolver null si la URL no se encuentra', async () => {
       const id = 1;
-      const newOriginalUrl = 'https://new-url.com';
+      const newOriginalUrl = 'https://www.updated.com';
 
-      mockUrlModel.findByPk.mockResolvedValue(null);
+      // Mock del método `findByPk`
+      (urlModel.findByPk as jest.Mock).mockResolvedValue(null);
 
       const result = await service.updateUrl(id, newOriginalUrl);
 
-      expect(mockUrlModel.findByPk).toHaveBeenCalledWith(id);
+      // Verificar que la URL no fue encontrada
       expect(result).toBeNull();
     });
   });

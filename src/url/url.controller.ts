@@ -8,13 +8,8 @@ export class UrlController {
   constructor(private readonly urlService: UrlService) {}
 
   @Post('shorten')
-  async shortenUrl(@Body('originalUrl') originalUrl: string): Promise<{ url: Url, shortUrl: string }> {
-    // Llama al servicio para acortar la URL
-    const result = await this.urlService.shortenUrl(originalUrl);
-    return {
-      url: result.url,              // objeto Url original desde la base de datos
-      shortUrl: result.fullShortUrl // URL completa (dominio + shortUrl)
-    };
+  async shortenUrl(@Body('originalUrl') originalUrl: string): Promise<Url> {
+    return this.urlService.shortenUrl(originalUrl);
   }
 
   @Get(':shortUrl')

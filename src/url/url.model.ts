@@ -20,4 +20,11 @@ export class Url extends Model<Url> {
     defaultValue: 0,
   })
   clickCount: number;
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+    unique: true,
+  })
+  fullShortUrl: string;
+  
 }
