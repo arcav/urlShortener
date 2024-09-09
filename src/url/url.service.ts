@@ -9,22 +9,21 @@ export class UrlService {
     private readonly urlModel: typeof Url,
   ) {}
 
-  // Acortar URL
+  // Acortardor de URL
   async shortenUrl(originalUrl: string): Promise<{ url: Url, fullShortUrl: string }> {
-  // Generar un shortUrl de 6 caracteres usando Math.random
+  //shortUrl de 6 caracteres usando Math.random
   const shortUrl = Math.random().toString(36).substring(2, 8); 
 
   // Crear el registro en la base de datos con la URL original y el shortUrl
   const newUrl = await this.urlModel.create({ originalUrl, shortUrl });
 
-  // Extraer el dominio del originalUrl usando la URL API de JavaScript
+  //dominio del originalUrl usando la URL API de JavaScript
   const urlObject = new URL(originalUrl);
   const domain = `${urlObject.protocol}//${urlObject.host}`;
 
-  // Construir la URL completa con el dominio extraído del originalUrl
+  //URL completa con el dominio extraído del originalUrl
   const fullShortUrl = `${domain}/${shortUrl}`;
 
-  // Devolver el objeto con la URL y la URL completa
   return { url: newUrl, fullShortUrl };
 }
 
@@ -33,12 +32,12 @@ export class UrlService {
     return this.urlModel.findOne({ where: { shortUrl } });
   }
 
-  // Listar todas las URLs
+  // Lista todas las URLs
   async listUrls(): Promise<Url[]> {
     return this.urlModel.findAll();
   }
 
-  // Eliminar una URL
+  // Elimina la URL
   async deleteUrl(id: number): Promise<void> {
     await this.urlModel.destroy({ where: { id } });
   }

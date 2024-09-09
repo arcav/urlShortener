@@ -11,11 +11,9 @@ export class UrlController {
   async shortenUrl(@Body('originalUrl') originalUrl: string): Promise<{ url: Url, shortUrl: string }> {
     // Llama al servicio para acortar la URL
     const result = await this.urlService.shortenUrl(originalUrl);
-  
-    // Devuelve la URL y el shortUrl completo
     return {
-      url: result.url,              // El objeto Url original desde la base de datos
-      shortUrl: result.fullShortUrl // La URL completa (dominio + shortUrl)
+      url: result.url,              // objeto Url original desde la base de datos
+      shortUrl: result.fullShortUrl // URL completa (dominio + shortUrl)
     };
   }
 
